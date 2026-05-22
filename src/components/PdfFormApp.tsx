@@ -220,20 +220,20 @@ export default function PdfFormApp() {
     );
   };
 
-  // Column labels matching the PDF structure
-  const cronoColLabels = ['Actividad 1', 'Actividad 2', 'Actividad 3', 'Actividad 4', 'Observaciones'];
+  // Column labels matching the PDF structure (4 activity columns, NO Observaciones)
+  const cronoColLabels = ['Actividad 1', 'Actividad 2', 'Actividad 3', 'Actividad 4'];
 
   const renderCronogramaTab = () => (
     <div className="table-responsive">
       <p className="text-muted mb-3">
-        Ingrese las actividades para cada día de la semana. El cronograma tiene 4 columnas de actividades y 1 columna de observaciones por día.
+        Ingrese las actividades para cada día de la semana. El cronograma tiene 4 columnas de actividades por día.
       </p>
       <table className="table table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
           <tr>
             <th style={{ width: '95px', minWidth: '85px' }}>Día</th>
             {cronoColLabels.map((label) => (
-              <th key={label} style={{ minWidth: label === 'Observaciones' ? '120px' : '90px' }}>{label}</th>
+              <th key={label} style={{ minWidth: '100px' }}>{label}</th>
             ))}
           </tr>
         </thead>
@@ -241,17 +241,17 @@ export default function PdfFormApp() {
           {dias.map((day, rowIdx) => (
             <tr key={day}>
               <td className="fw-bold text-center align-middle bg-light" style={{ fontSize: '0.75rem' }}>{day}</td>
-              {[0, 1, 2, 3, 4].map((col) => {
+              {[0, 1, 2, 3].map((col) => {
                 const key = `crono_${rowIdx}_${col}`;
                 return (
                   <td key={col}>
-                    <input
-                      type="text"
+                    <textarea
                       className="form-control form-control-sm border-0 shadow-none"
-                      placeholder={col < 4 ? 'Actividad...' : 'Obs...'}
+                      placeholder="Actividad..."
                       value={formData[key] || ''}
                       onChange={(e) => handleChange(key, e.target.value)}
-                      style={{ fontSize: '0.78rem' }}
+                      style={{ fontSize: '0.78rem', resize: 'none', minHeight: '50px' }}
+                      rows={2}
                     />
                   </td>
                 );

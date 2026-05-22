@@ -18,13 +18,14 @@ export interface FieldPosition {
 // PAGE 1: CRONOGRAMA - Plan de Trabajo
 // ============================================================
 // Table structure:
-//   Day labels column: x=135.5 to x=152.3 (rotated text)
-//   Activity columns: x=175.5 to x=545.0
-//     Col 0: x=175.5 to x=242.2 (width=66.7)
-//     Col 1: x=242.2 to x=310.4 (width=68.2)
-//     Col 2: x=310.4 to x=378.2 (width=67.8)
-//     Col 3: x=378.2 to x=448.5 (width=70.3)
-//     Col 4: x=448.5 to x=545.0 (width=96.5) - "Observaciones"
+//   Day labels column: x=134.8 to x=152.3 (rotated text, blue background)
+//   Activity columns: x=175.5 to x=448.5
+//     Col 0: x=175.5 to x=242.2 (width≈66.7)
+//     Col 1: x=242.2 to x=310.4 (width≈68.2)
+//     Col 2: x=310.4 to x=378.2 (width≈67.8)
+//     Col 3: x=378.2 to x=448.5 (width≈70.3)
+//   NOTE: Area from x=448.5 to x=545.0 is a decorative flag graphic, NOT a data column.
+//         There is NO "Observaciones" column in this PDF.
 //
 // Day rows (pdfplumber y coords, top to bottom = DOMINGO to LUNES):
 //   Row 0 (DOMINGO):  y=71.9  to y=161.5
@@ -37,13 +38,12 @@ export interface FieldPosition {
 
 export const dias = ['DOMINGO', 'SÁBADO', 'VIERNES', 'JUEVES', 'MIÉRCOLES', 'MARTES', 'LUNES'];
 
-// Column definitions: [label, xStart, xEnd]
+// Column definitions: only 4 activity columns (NO Observaciones)
 const cronoColumns = [
   { label: 'Actividad 1', xStart: 175.5, xEnd: 242.2 },
   { label: 'Actividad 2', xStart: 242.2, xEnd: 310.4 },
   { label: 'Actividad 3', xStart: 310.4, xEnd: 378.2 },
   { label: 'Actividad 4', xStart: 378.2, xEnd: 448.5 },
-  { label: 'Observaciones', xStart: 448.5, xEnd: 545.0 },
 ];
 
 // Row boundaries (pdfplumber top y-coords)
@@ -56,22 +56,21 @@ export function getCronogramaFieldPositions(): Record<string, FieldPosition> {
   dias.forEach((day, rowIdx) => {
     const topY = cronoRowTops[rowIdx];
     const bottomY = cronoRowBottoms[rowIdx];
+    const rowHeight = bottomY - topY;
 
     cronoColumns.forEach((col, colIdx) => {
-      // Text starts a few points right of the left edge of the cell
-      const textX = col.xStart + 3;
-      // Baseline: a few points above the bottom of the cell
-      const baselinePdfplumber = bottomY - 6;
-      const baselinePdflib = 792 - baselinePdfplumber;
-      const cellWidth = col.xEnd - col.xStart - 6; // 3px padding each side
+      const cellWidth = col.xEnd - col.xStart;
+      const padding = 4;
 
       fields[`crono_${rowIdx}_${colIdx}`] = {
-        x: textX,
-        y: baselinePdflib,
-        width: cellWidth,
-        height: 12,
-        fontSize: 7.5,
+        x: col.xStart + padding,
+        y: 792 - (bottomY - 10), // baseline: 10pt above bottom of cell
+        width: cellWidth - padding * 2,
+        height: rowHeight - 16,
+        fontSize: 8,
         page: 0,
+        multiline: true,
+        maxLines: Math.floor((rowHeight - 14) / 11), // approximate line count
       };
     });
   });

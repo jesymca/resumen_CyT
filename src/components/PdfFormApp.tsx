@@ -25,45 +25,14 @@ export default function PdfFormApp() {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  const fillPdfField = (
-    page: any,
-    field: FieldPosition,
-    value: string,
-    font: any,
-    pdfDoc: PDFDocument
-  ) => {
-    if (!value.trim()) return;
-
-    if (field.multiline) {
-      // For multiline fields, draw each line separately
-      const lines = wrapText(value, field.width, font, field.fontSize);
-      const lineHeight = field.fontSize + 3;
-      lines.slice(0, field.maxLines || 3).forEach((line, idx) => {
-        page.drawText(line, {
-          x: field.x,
-          y: field.y - idx * lineHeight,
-          size: field.fontSize,
-          font,
-          color: rgb(0, 0, 0),
-        });
-      });
-    } else {
-      page.drawText(value, {
-        x: field.x,
-        y: field.y,
-        size: field.fontSize,
-        font,
-        color: rgb(0, 0, 0),
-      });
-    }
-  };
-
+  // Wrap text to fit within maxWidth, returns array of lines
   const wrapText = (text: string, maxWidth: number, font: any, fontSize: number): string[] => {
-    const words = text.split(' ');
+    const words = text.split(/\s+/);
     const lines: string[] = [];
     let currentLine = '';
 
     for (const word of words) {
+      if (!word) continue;
       const testLine = currentLine ? `${currentLine} ${word}` : word;
       const testWidth = font.widthOfTextAtSize(testLine, fontSize);
       if (testWidth > maxWidth && currentLine) {
@@ -77,16 +46,96 @@ export default function PdfFormApp() {
     return lines;
   };
 
+  // Draw justified text within a bounding box
+  const drawJustifiedLine = (
+    page: any,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    fontSize: number,
+    font: any,
+    isLastLine: boolean
+  ) => {
+    if (isLastLine) {
+      // Last line of a paragraph: left-aligned
+      page.drawText(text, {
+        x,
+        y,
+        size: fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+      return;
+    }
+
+    // Justify: distribute extra space between words
+    const words = text.split(/\s+/);
+    if (words.length <= 1) {
+      page.drawText(text, { x, y, size: fontSize, font, color: rgb(0, 0, 0) });
+      return;
+    }
+
+    const totalTextWidth = font.widthOfTextAtSize(text, fontSize);
+    const extraSpace = maxWidth - totalTextWidth;
+    const spaceCount = words.length - 1;
+    const normalSpaceWidth = font.widthOfTextAtSize(' ', fontSize);
+    const justifiedSpaceWidth = normalSpaceWidth + extraSpace / spaceCount;
+
+    let currentX = x;
+    for (let i = 0; i < words.length; i++) {
+      page.drawText(words[i], {
+        x: currentX,
+        y,
+        size: fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+      if (i < words.length - 1) {
+        currentX += font.widthOfTextAtSize(words[i], fontSize) + justifiedSpaceWidth;
+      }
+    }
+  };
+
+  const fillPdfField = (
+    page: any,
+    field: FieldPosition,
+    value: string,
+    font: any,
+    pdfDoc: PDFDocument
+  ) => {
+    if (!value.trim()) return;
+
+    if (field.multiline) {
+      const lines = wrapText(value, field.width, font, field.fontSize);
+      const lineHeight = field.fontSize + 3;
+      const maxLines = field.maxLines || 3;
+      const visibleLines = lines.slice(0, maxLines);
+
+      visibleLines.forEach((line, idx) => {
+        const isLastLine = idx === visibleLines.length - 1;
+        drawJustifiedLine(page, line, field.x, field.y - idx * lineHeight, field.width, field.fontSize, font, isLastLine);
+      });
+    } else {
+      // Single line: left-aligned within the right column
+      page.drawText(value, {
+        x: field.x,
+        y: field.y,
+        size: field.fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+    }
+  };
+
   const generatePdf = async () => {
     setIsGenerating(true);
     setSuccessMsg('');
 
     try {
-      // Fetch the original PDF
       const pdfBytes = await fetch('/formatos.pdf').then((res) => res.arrayBuffer());
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
       const pages = pdfDoc.getPages();
 
       // Fill Cronograma (Page 1)
@@ -171,36 +220,38 @@ export default function PdfFormApp() {
     );
   };
 
+  // Column labels matching the PDF structure
+  const cronoColLabels = ['Actividad 1', 'Actividad 2', 'Actividad 3', 'Actividad 4', 'Observaciones'];
+
   const renderCronogramaTab = () => (
     <div className="table-responsive">
       <p className="text-muted mb-3">
-        Ingrese las actividades para cada día de la semana. Cada día tiene 4 columnas para actividades.
+        Ingrese las actividades para cada día de la semana. El cronograma tiene 4 columnas de actividades y 1 columna de observaciones por día.
       </p>
-      <table className="table table-bordered align-middle" style={{ fontSize: '0.85rem' }}>
+      <table className="table table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
           <tr>
-            <th style={{ width: '100px', minWidth: '90px' }}>Día</th>
-            <th>Actividad 1</th>
-            <th>Actividad 2</th>
-            <th>Actividad 3</th>
-            <th>Actividad 4</th>
+            <th style={{ width: '95px', minWidth: '85px' }}>Día</th>
+            {cronoColLabels.map((label) => (
+              <th key={label} style={{ minWidth: label === 'Observaciones' ? '120px' : '90px' }}>{label}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {dias.map((day, rowIdx) => (
             <tr key={day}>
-              <td className="fw-bold text-center align-middle bg-light">{day}</td>
-              {[0, 1, 2, 3].map((col) => {
+              <td className="fw-bold text-center align-middle bg-light" style={{ fontSize: '0.75rem' }}>{day}</td>
+              {[0, 1, 2, 3, 4].map((col) => {
                 const key = `crono_${rowIdx}_${col}`;
                 return (
                   <td key={col}>
                     <input
                       type="text"
                       className="form-control form-control-sm border-0 shadow-none"
-                      placeholder="Actividad..."
+                      placeholder={col < 4 ? 'Actividad...' : 'Obs...'}
                       value={formData[key] || ''}
                       onChange={(e) => handleChange(key, e.target.value)}
-                      style={{ fontSize: '0.8rem' }}
+                      style={{ fontSize: '0.78rem' }}
                     />
                   </td>
                 );
@@ -215,7 +266,7 @@ export default function PdfFormApp() {
   const renderActividadTab = () => (
     <div>
       <p className="text-muted mb-3">
-        Complete los campos del Reporte de la Actividad. Los campos marcados se escribirán directamente en el PDF.
+        Complete los campos del Reporte de la Actividad. Los datos se escribirán en la columna blanca de la derecha, siguiendo el mismo orden que las etiquetas de la izquierda.
       </p>
       <div className="row">
         <div className="col-md-6">
@@ -233,7 +284,7 @@ export default function PdfFormApp() {
   const renderMensualTab = () => (
     <div>
       <p className="text-muted mb-3">
-        Complete los campos del Reporte Mensual. Los campos marcados se escribirán directamente en el PDF.
+        Complete los campos del Reporte Mensual. Los datos se escribirán en la columna blanca de la derecha.
       </p>
       <div className="row">
         <div className="col-md-6">
@@ -269,7 +320,7 @@ export default function PdfFormApp() {
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-body py-3">
             <div className="d-flex align-items-start gap-3">
-              <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" 
+              <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                    style={{ width: '40px', height: '40px', background: '#e8f4fd' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#2980b9" className="bi bi-info-circle" viewBox="0 0 16 16">
                   <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
@@ -279,9 +330,9 @@ export default function PdfFormApp() {
               <div>
                 <h6 className="mb-1 fw-bold" style={{ color: '#1a5276' }}>¿Cómo funciona?</h6>
                 <p className="mb-0 text-muted" style={{ fontSize: '0.875rem' }}>
-                  Seleccione la pestaña del formulario que desea llenar, complete los campos requeridos y luego 
-                  presione <strong>&quot;Generar PDF&quot;</strong> para descargar el PDF con todos los datos ingresados. 
-                  Puede llenar uno, dos o los tres formularios a la vez.
+                  Seleccione la pestaña del formulario que desea llenar, complete los campos requeridos y luego
+                  presione <strong>&quot;Generar PDF&quot;</strong> para descargar el PDF con todos los datos ingresados.
+                  Puede llenar uno, dos o los tres formularios a la vez. Los textos largos se justifican automáticamente.
                 </p>
               </div>
             </div>
@@ -351,7 +402,7 @@ export default function PdfFormApp() {
                   className="btn btn-lg w-100 mb-2 text-white"
                   onClick={generatePdf}
                   disabled={isGenerating}
-                  style={{ 
+                  style={{
                     background: isGenerating ? '#95a5a6' : 'linear-gradient(135deg, #27ae60, #2ecc71)',
                     fontSize: '1rem',
                     fontWeight: 600,

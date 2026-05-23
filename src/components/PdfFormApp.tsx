@@ -5,10 +5,8 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import {
   page2Fields,
   page3Fields,
-  getCronogramaFieldPositions,
   page2FormFields,
   page3FormFields,
-  dias,
   type FieldPosition,
   type FormFieldDef,
 } from '@/lib/pdf-fields';
@@ -16,7 +14,7 @@ import {
 type FormData = Record<string, string>;
 
 export default function PdfFormApp() {
-  const [activeTab, setActiveTab] = useState<'cronograma' | 'actividad' | 'mensual'>('cronograma');
+  const [activeTab, setActiveTab] = useState<'actividad' | 'mensual'>('actividad');
   const [formData, setFormData] = useState<FormData>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -58,7 +56,6 @@ export default function PdfFormApp() {
     isLastLine: boolean
   ) => {
     if (isLastLine) {
-      // Last line of a paragraph: left-aligned
       page.drawText(text, {
         x,
         y,
@@ -69,7 +66,6 @@ export default function PdfFormApp() {
       return;
     }
 
-    // Justify: distribute extra space between words
     const words = text.split(/\s+/);
     if (words.length <= 1) {
       page.drawText(text, { x, y, size: fontSize, font, color: rgb(0, 0, 0) });
@@ -117,7 +113,6 @@ export default function PdfFormApp() {
         drawJustifiedLine(page, line, field.x, field.y - idx * lineHeight, field.width, field.fontSize, font, isLastLine);
       });
     } else {
-      // Single line: left-aligned within the right column
       page.drawText(value, {
         x: field.x,
         y: field.y,
@@ -138,15 +133,7 @@ export default function PdfFormApp() {
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const pages = pdfDoc.getPages();
 
-      // Fill Cronograma (Page 1)
-      const cronoFields = getCronogramaFieldPositions();
-      const page0 = pages[0];
-      for (const [key, field] of Object.entries(cronoFields)) {
-        const value = formData[key] || '';
-        if (value.trim()) {
-          fillPdfField(page0, field, value, font, pdfDoc);
-        }
-      }
+      // Page 1 (Cronograma) se deja en blanco - se llena a mano
 
       // Fill Reporte de la Actividad (Page 2)
       const page1 = pages[1];
@@ -220,49 +207,6 @@ export default function PdfFormApp() {
     );
   };
 
-  // Column labels matching the PDF structure (4 activity columns, NO Observaciones)
-  const cronoColLabels = ['Actividad 1', 'Actividad 2', 'Actividad 3', 'Actividad 4'];
-
-  const renderCronogramaTab = () => (
-    <div className="table-responsive">
-      <p className="text-muted mb-3">
-        Ingrese las actividades para cada día de la semana. El cronograma tiene 4 columnas de actividades por día.
-      </p>
-      <table className="table table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
-        <thead className="table-light">
-          <tr>
-            <th style={{ width: '95px', minWidth: '85px' }}>Día</th>
-            {cronoColLabels.map((label) => (
-              <th key={label} style={{ minWidth: '100px' }}>{label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {dias.map((day, rowIdx) => (
-            <tr key={day}>
-              <td className="fw-bold text-center align-middle bg-light" style={{ fontSize: '0.75rem' }}>{day}</td>
-              {[0, 1, 2, 3].map((col) => {
-                const key = `crono_${rowIdx}_${col}`;
-                return (
-                  <td key={col}>
-                    <textarea
-                      className="form-control form-control-sm border-0 shadow-none"
-                      placeholder="Actividad..."
-                      value={formData[key] || ''}
-                      onChange={(e) => handleChange(key, e.target.value)}
-                      style={{ fontSize: '0.78rem', resize: 'none', minHeight: '50px' }}
-                      rows={2}
-                    />
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
   const renderActividadTab = () => (
     <div>
       <p className="text-muted mb-3">
@@ -307,7 +251,7 @@ export default function PdfFormApp() {
               <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
               <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
             </svg>
-            Llenador de PDF - Plan Cronograma de Trabajo
+            Llenador de PDF - Reportes Mincyt
           </span>
           <span className="text-white-50" style={{ fontSize: '0.85rem' }}>
             Ministerio del Poder Popular para Ciencia, Tecnología e Innovación
@@ -332,7 +276,8 @@ export default function PdfFormApp() {
                 <p className="mb-0 text-muted" style={{ fontSize: '0.875rem' }}>
                   Seleccione la pestaña del formulario que desea llenar, complete los campos requeridos y luego
                   presione <strong>&quot;Generar PDF&quot;</strong> para descargar el PDF con todos los datos ingresados.
-                  Puede llenar uno, dos o los tres formularios a la vez. Los textos largos se justifican automáticamente.
+                  Puede llenar uno o ambos formularios a la vez. Los textos largos se justifican automáticamente.
+                  <br /><strong>Nota:</strong> El Cronograma (Página 1) se llena a mano en el PDF impreso.
                 </p>
               </div>
             </div>
@@ -357,18 +302,9 @@ export default function PdfFormApp() {
                 <ul className="nav nav-tabs card-header-tabs" role="tablist">
                   <li className="nav-item">
                     <button
-                      className={`nav-link ${activeTab === 'cronograma' ? 'active fw-bold' : ''}`}
-                      onClick={() => setActiveTab('cronograma')}
-                      style={activeTab === 'cronograma' ? { color: '#1a5276', borderBottomColor: '#2980b9' } : {}}
-                    >
-                      Cronograma
-                    </button>
-                  </li>
-                  <li className="nav-item">
-                    <button
                       className={`nav-link ${activeTab === 'actividad' ? 'active fw-bold' : ''}`}
                       onClick={() => setActiveTab('actividad')}
-                      style={activeTab === 'actividad' ? { color: '#1a5276', borderBottomColor: '#2980b9' } : {}}
+                      style={activeTab === 'actividad' ? { color: '#1a5276', borderBottomColor: '#27ae60' } : {}}
                     >
                       Reporte de Actividad
                     </button>
@@ -377,7 +313,7 @@ export default function PdfFormApp() {
                     <button
                       className={`nav-link ${activeTab === 'mensual' ? 'active fw-bold' : ''}`}
                       onClick={() => setActiveTab('mensual')}
-                      style={activeTab === 'mensual' ? { color: '#1a5276', borderBottomColor: '#2980b9' } : {}}
+                      style={activeTab === 'mensual' ? { color: '#1a5276', borderBottomColor: '#e67e22' } : {}}
                     >
                       Reporte Mensual
                     </button>
@@ -385,7 +321,6 @@ export default function PdfFormApp() {
                 </ul>
               </div>
               <div className="card-body">
-                {activeTab === 'cronograma' && renderCronogramaTab()}
                 {activeTab === 'actividad' && renderActividadTab()}
                 {activeTab === 'mensual' && renderMensualTab()}
               </div>
@@ -442,9 +377,6 @@ export default function PdfFormApp() {
               <div className="card-body">
                 <h6 className="fw-bold mb-3" style={{ color: '#1a5276' }}>Resumen de Campos</h6>
                 {(() => {
-                  const cronoFields = getCronogramaFieldPositions();
-                  const cronoFilled = Object.keys(cronoFields).filter((k) => formData[k]?.trim()).length;
-                  const cronoTotal = Object.keys(cronoFields).length;
                   const actFilled = Object.keys(page2Fields).filter((k) => formData[k]?.trim()).length;
                   const actTotal = Object.keys(page2Fields).length;
                   const menFilled = Object.keys(page3Fields).filter((k) => formData[k]?.trim()).length;
@@ -452,14 +384,6 @@ export default function PdfFormApp() {
 
                   return (
                     <div>
-                      <div className="d-flex justify-content-between mb-1" style={{ fontSize: '0.85rem' }}>
-                        <span>Cronograma</span>
-                        <span className="badge bg-light text-dark">{cronoFilled}/{cronoTotal}</span>
-                      </div>
-                      <div className="progress mb-2" style={{ height: '6px' }}>
-                        <div className="progress-bar" style={{ width: `${(cronoFilled / cronoTotal) * 100}%`, background: '#2980b9' }} />
-                      </div>
-
                       <div className="d-flex justify-content-between mb-1" style={{ fontSize: '0.85rem' }}>
                         <span>Reporte Actividad</span>
                         <span className="badge bg-light text-dark">{actFilled}/{actTotal}</span>
@@ -487,8 +411,8 @@ export default function PdfFormApp() {
                 <h6 className="fw-bold mb-2" style={{ color: '#1a5276' }}>Contenido del PDF</h6>
                 <div className="list-group list-group-flush" style={{ fontSize: '0.85rem' }}>
                   <div className="list-group-item border-0 px-0 py-2 d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill" style={{ background: '#2980b9' }}>Pág 1</span>
-                    Cronograma Semanal
+                    <span className="badge rounded-pill bg-secondary">Pág 1</span>
+                    Cronograma Semanal <span className="text-muted fst-italic">(se llena a mano)</span>
                   </div>
                   <div className="list-group-item border-0 px-0 py-2 d-flex align-items-center gap-2">
                     <span className="badge rounded-pill" style={{ background: '#27ae60' }}>Pág 2</span>
@@ -507,7 +431,7 @@ export default function PdfFormApp() {
 
       {/* Footer */}
       <footer className="text-center py-3 mt-4" style={{ background: '#1a5276', color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>
-        Llenador de PDF — Plan Cronograma de Trabajo — Mincyt
+        Llenador de PDF — Reportes Mincyt
       </footer>
     </div>
   );

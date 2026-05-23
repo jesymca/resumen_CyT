@@ -16,67 +16,8 @@ export interface FieldPosition {
 
 // ============================================================
 // PAGE 1: CRONOGRAMA - Plan de Trabajo
+// Se llena a mano - no hay campos automáticos
 // ============================================================
-// Table structure:
-//   Day labels column: x=134.8 to x=152.3 (rotated text, blue background)
-//   Activity columns: x=175.5 to x=448.5
-//     Col 0: x=175.5 to x=242.2 (width≈66.7)
-//     Col 1: x=242.2 to x=310.4 (width≈68.2)
-//     Col 2: x=310.4 to x=378.2 (width≈67.8)
-//     Col 3: x=378.2 to x=448.5 (width≈70.3)
-//   NOTE: Area from x=448.5 to x=545.0 is a decorative flag graphic, NOT a data column.
-//         There is NO "Observaciones" column in this PDF.
-//
-// Day rows (pdfplumber y coords, top to bottom = DOMINGO to LUNES):
-//   Row 0 (DOMINGO):  y=71.9  to y=161.5
-//   Row 1 (SÁBADO):   y=161.5 to y=247.6
-//   Row 2 (VIERNES):  y=247.6 to y=335.1
-//   Row 3 (JUEVES):   y=335.1 to y=422.6
-//   Row 4 (MIÉRCOLES): y=422.6 to y=519.3
-//   Row 5 (MARTES):   y=519.3 to y=606.8
-//   Row 6 (LUNES):    y=606.8 to y=695.0
-
-export const dias = ['DOMINGO', 'SÁBADO', 'VIERNES', 'JUEVES', 'MIÉRCOLES', 'MARTES', 'LUNES'];
-
-// Column definitions: only 4 activity columns (NO Observaciones)
-const cronoColumns = [
-  { label: 'Actividad 1', xStart: 175.5, xEnd: 242.2 },
-  { label: 'Actividad 2', xStart: 242.2, xEnd: 310.4 },
-  { label: 'Actividad 3', xStart: 310.4, xEnd: 378.2 },
-  { label: 'Actividad 4', xStart: 378.2, xEnd: 448.5 },
-];
-
-// Row boundaries (pdfplumber top y-coords)
-const cronoRowTops = [71.9, 161.5, 247.6, 335.1, 422.6, 519.3, 606.8];
-const cronoRowBottoms = [161.5, 247.6, 335.1, 422.6, 519.3, 606.8, 695.0];
-
-export function getCronogramaFieldPositions(): Record<string, FieldPosition> {
-  const fields: Record<string, FieldPosition> = {};
-
-  dias.forEach((day, rowIdx) => {
-    const topY = cronoRowTops[rowIdx];
-    const bottomY = cronoRowBottoms[rowIdx];
-    const rowHeight = bottomY - topY;
-
-    cronoColumns.forEach((col, colIdx) => {
-      const cellWidth = col.xEnd - col.xStart;
-      const padding = 4;
-
-      fields[`crono_${rowIdx}_${colIdx}`] = {
-        x: col.xStart + padding,
-        y: 792 - (bottomY - 10), // baseline: 10pt above bottom of cell
-        width: cellWidth - padding * 2,
-        height: rowHeight - 16,
-        fontSize: 8,
-        page: 0,
-        multiline: true,
-        maxLines: Math.floor((rowHeight - 14) / 11), // approximate line count
-      };
-    });
-  });
-
-  return fields;
-}
 
 // ============================================================
 // PAGE 2: REPORTE DE LA ACTIVIDAD
@@ -119,8 +60,6 @@ function rowBaseline(rowIndex: number): number {
 // Right column positioning
 const p2_rightX = 234; // a few px right of divider at x=229
 const p2_rightWidth = 526 - 234; // ~292 points
-const p2_fullX = 72; // for full-width fields (multiline below Entes)
-const p2_fullWidth = 526 - 72; // ~454 points
 
 export const page2Fields: Record<string, FieldPosition> = {
   nombreResponsable: {

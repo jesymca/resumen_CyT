@@ -85,3 +85,90 @@ llenador-pdf-municipal/
 ## Si necesitas cambiar el PDF
 
 Si tienes un PDF diferente, reemplaza el archivo `public/formatos.pdf` con tu nuevo PDF (manteniendo el mismo nombre).
+
+## Instrucciones para usuarios Windows
+
+**Requisitos**
+- **Node.js**: versión 18+ instalada.
+- **npm**: incluida con Node.js.
+- **Git**: para clonar/actualizar el repo.
+- **Recomendado:** WSL2 (Ubuntu) para compatibilidad idéntica a Linux. Alternativas: PowerShell 7+ o Git Bash.
+
+**Resumen rápido**
+- **Script bash:** `start.sh` usa `bash` y `export`, no funciona en CMD/PowerShell nativo — ver [start.sh](start.sh#L1-L5).
+- **Scripts npm:** `dev`, `build`, `start` son ejecutables desde Windows con Node instalado — ver [package.json](package.json#L1-L40).
+
+**Opción recomendada — WSL2 (mejor compatibilidad)**
+1. Instalar WSL2 y una distro (ej. Ubuntu). En PowerShell (como administrador):
+```powershell
+wsl --install
+wsl --set-default-version 2
+```
+2. Abrir la terminal WSL (Ubuntu), navegar al proyecto y ejecutar:
+```bash
+cd /ruta/al/proyecto   # p.ej. /mnt/c/Users/TuUsuario/Descargas/resumen_CyT
+npm install
+npm run dev
+```
+3. Dentro de WSL `start.sh` funciona tal cual (usa `export`).
+
+**Opción alternativa A — PowerShell (sin WSL)**
+1. Abrir PowerShell 7+.
+2. Instalar dependencias:
+```powershell
+npm install
+```
+3. Definir variables de entorno y lanzar:
+```powershell
+$env:PORT = "3000"
+$env:HOSTNAME = "0.0.0.0"
+npx next dev -p 3000 -H 0.0.0.0
+```
+4. O usar `cross-env` para mantener sintaxis cross-platform:
+```powershell
+npm install --save-dev cross-env
+npx cross-env PORT=3000 HOSTNAME=0.0.0.0 npm run dev
+```
+
+**Opción alternativa B — Git Bash / MSYS2**
+1. Abrir Git Bash en la carpeta del proyecto.
+2. Ejecutar:
+```bash
+export PORT=3000
+export HOSTNAME=0.0.0.0
+npx next dev -p 3000 -H 0.0.0.0
+```
+
+**Comandos npm habituales**
+- Instalar dependencias:
+```bash
+npm install
+```
+- Desarrollo:
+```bash
+npm run dev
+```
+- Build:
+```bash
+npm run build
+```
+- Producción:
+```bash
+npm start
+```
+
+**Notas sobre Prisma u otros motores nativos**
+- Si el proyecto usa Prisma u otra herramienta con binarios por plataforma, ejecutar:
+```bash
+npx prisma generate
+```
+(en WSL funciona como en Linux; en PowerShell puede requerir pasos adicionales).
+
+**Consejos y soluciones rápidas**
+- Si el puerto 3000 está ocupado (PowerShell):
+```powershell
+Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process
+```
+- Firewall: acepta la petición de Windows al exponer Node si confías en la app.
+- Problemas de rutas/permisos largos: usar WSL evita la mayoría de inconvenientes.
+
